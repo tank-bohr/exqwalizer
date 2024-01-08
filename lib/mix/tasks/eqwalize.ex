@@ -29,7 +29,7 @@ defmodule Mix.Tasks.Eqwalize do
     name = Keyword.fetch!(config, :app)
     build_path = Mix.Project.build_path()
     dir = Path.join([build_path, "lib", Atom.to_string(name)])
-    maybe_populate_with_fake_erl_sources(dir)
+    populate_with_fake_erl_sources(dir)
 
     %{
       name: to_string(name),
@@ -44,7 +44,7 @@ defmodule Mix.Tasks.Eqwalize do
 
   defp build_dep_info(%Mix.Dep{app: name, opts: opts}) do
     dir = Keyword.fetch!(opts, :build)
-    maybe_populate_with_fake_erl_sources(dir)
+    populate_with_fake_erl_sources(dir)
 
     %{
       name: to_string(name),
@@ -59,11 +59,26 @@ defmodule Mix.Tasks.Eqwalize do
 
   defp elixir_info() do
     for app <- ~w[logger elixir]a do
+      dir =
+        app
+        |> Application.app_dir()
+        |> Path.expand()
+
+      ebin =
+        app
+        |> Application.app_dir("ebin")
+        |> Path.expand()
+
+      src_dir =
+        System.tmp_dir!()
+        |> Path.join("exqwalizer-fake-sources-for-#{app}")
+        |> tap(&populate_with_fake_erl_sources(&1, ebin))
+
       %{
         name: to_string(app),
-        dir: Application.app_dir(app),
-        ebin: Application.app_dir(app, "ebin"),
-        src_dirs: ["src"],
+        dir: dir,
+        ebin: ebin,
+        src_dirs: [src_dir],
         extra_src_dirs: [],
         include_dirs: [],
         macros: []
@@ -87,21 +102,20 @@ defmodule Mix.Tasks.Eqwalize do
     |> Enum.sort
   end
 
-  defp maybe_populate_with_fake_erl_sources(dir) do
-    src_path = Path.join(dir, "src")
-    unless File.exists?(src_path) do
-      File.mkdir!(src_path)
-      populate_with_fake_erl_sources(dir)
-    end
+  defp populate_with_fake_erl_sources(dir) do
+    sources_path = Path.join(dir, "src")
+    compile_path = Path.join(dir, "ebin")
+    populate_with_fake_erl_sources(sources_path, compile_path)
   end
 
-  defp populate_with_fake_erl_sources(dir) do
-    dir
-    |> Path.join("ebin")
+  defp populate_with_fake_erl_sources(sources_path, compile_path) do
+    File.mkdir_p!(sources_path)
+
+    compile_path
     |> modules_from()
     |> Enum.each(fn module ->
-      [dir, "src", "#{module}.erl"]
-      |> Path.join()
+      sources_path
+      |> Path.join("#{module}.erl")
       |> File.touch!()
     end)
   end
