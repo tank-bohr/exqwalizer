@@ -50,16 +50,19 @@ defmodule Exqwalizer.EqwalizerClient do
     else
       IO.puts("Congratulations! No errors")
     end
+
     Port.close(port)
   end
 
   defp print_diagnostics(diagnostics) do
     for {module, results} <- diagnostics do
       IO.puts("Diagnostics for module #{module}:")
+
       for result <- results do
         %{message: message, uri: uri, expressionOrNull: expressionOrNull} = result
         IO.puts(message)
         IO.puts("see: #{uri}")
+
         if expressionOrNull do
           expressionOrNull
           |> Erlex.pretty_print()
@@ -73,16 +76,19 @@ defmodule Exqwalizer.EqwalizerClient do
   defp env(build_info) do
     build_info_path = dump_build_info(build_info)
 
-    Enum.map(%{
-      "EQWALIZER_BUILD_INFO" => build_info_path,
-      "EQWALIZER_ELP_AST_DIR" => "elp-ast",
-      "EQWALIZER_GRADUAL_TYPING" => "true",
-      "EQWALIZER_EQWATER" => "true",
-      "EQWALIZER_TOLERATE_ERRORS" => "true",
-      "EQWALIZER_CHECK_REDUNDANT_GUARDS" => "false",
-      "EQWALIZER_MODE" => "mini_elp",
-      "EQWALIZER_ERROR_DEPTH" => "4"
-    }, fn {k, v} -> {String.to_charlist(k), String.to_charlist(v)} end)
+    Enum.map(
+      %{
+        "EQWALIZER_BUILD_INFO" => build_info_path,
+        "EQWALIZER_ELP_AST_DIR" => "elp-ast",
+        "EQWALIZER_GRADUAL_TYPING" => "true",
+        "EQWALIZER_EQWATER" => "true",
+        "EQWALIZER_TOLERATE_ERRORS" => "true",
+        "EQWALIZER_CHECK_REDUNDANT_GUARDS" => "false",
+        "EQWALIZER_MODE" => "mini_elp",
+        "EQWALIZER_ERROR_DEPTH" => "4"
+      },
+      fn {k, v} -> {String.to_charlist(k), String.to_charlist(v)} end
+    )
   end
 
   defp dump_build_info(build_info) do
@@ -96,7 +102,7 @@ defmodule Exqwalizer.EqwalizerClient do
   defp eqwalizer_cmd(eqwalizer_path) do
     case Path.extname(eqwalizer_path) do
       ".jar" ->
-        java_path = :os.find_executable('java') || :erlang.error(:enoent)
+        java_path = :os.find_executable(~c"java") || :erlang.error(:enoent)
         {java_path, ["-Xss10M", "-jar", eqwalizer_path]}
 
       _non_jar_ext ->
@@ -118,12 +124,15 @@ defmodule Exqwalizer.EqwalizerClient do
   end
 
   defp send_ast_bytes(port, abstract_code) do
-    content = :erlang.term_to_binary({:ok, abstract_code})
+    content = :erlang.term_to_binary({:ok, abstract_code, []})
     ast_bytes_len = byte_size(content)
-    reply = Jason.encode!(%{
-      tag: "GetAstBytesReply",
-      content: %{ast_bytes_len: ast_bytes_len}
-    })
+
+    reply =
+      Jason.encode!(%{
+        tag: "GetAstBytesReply",
+        content: %{ast_bytes_len: ast_bytes_len}
+      })
+
     Port.command(port, reply)
     send_newline(port)
     {:ok, ""} = receive_line(port)
