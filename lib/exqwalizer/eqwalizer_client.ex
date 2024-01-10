@@ -121,6 +121,10 @@ defmodule Exqwalizer.EqwalizerClient do
       {^port, {:data, {:eol, data}}} ->
         data = [data | buffer] |> Enum.reverse() |> IO.iodata_to_binary()
         {:ok, data}
+    after
+      2_000 ->
+        unless is_nil(Port.info(port)), do: Port.close(port)
+        {:error, :timeout}
     end
   end
 
