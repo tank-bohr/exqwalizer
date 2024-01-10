@@ -117,7 +117,7 @@ defmodule Mix.Tasks.Eqwalize do
           {:debug_info_v1, backend, data} = :erlang.binary_to_term(debug_chunk)
           {:elixir_v1, %{compile_opts: compile_opts}, _specs} = data
           {:ok, abstract_code} = backend.debug_info(:erlang_v1, module, data, [])
-
+          :exqwalizer_erl_parse_transform.parse_transform(abstract_code, [])
           new_chunk =
             :erlang.term_to_binary(
               {:debug_info_v1, :erl_abstract_code, {abstract_code, compile_opts}}

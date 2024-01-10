@@ -35,6 +35,7 @@ defmodule Exqwalizer.EqwalizerClient do
     {:ok, beam} = File.read(beam_path)
     {:ok, {_mod, chunks}} = :beam_lib.chunks(beam, [:abstract_code])
     {_, abstract_code} = chunks[:abstract_code]
+    abstract_code = :exqwalizer_erl_parse_transform.parse_transform(abstract_code, [])
     send_ast_bytes(port, abstract_code)
     loop(port)
   end
